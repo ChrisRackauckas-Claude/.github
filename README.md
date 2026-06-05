@@ -222,6 +222,7 @@ to catch under-specified `[compat]` lower bounds.
 | `group` | string | `""` | Test group. |
 | `skip` | string | `"Pkg,TOML"` | Comma-separated deps to skip when downgrading. |
 | `projects` | string | `"."` | Comma-separated project dirs to downgrade. |
+| `mode` | string | `""` | `julia-downgrade-compat` mode: `deps`/`alldeps`/`weakdeps`/`forcedeps` (forcedeps = strict lower-bound verification). Empty = action default. |
 | `allow-reresolve` | boolean | `false` | Let Pkg relax the downgraded env when running tests. |
 | `self-hosted` / `os` | | `false` / `ubuntu-latest` | Runner selection. |
 
