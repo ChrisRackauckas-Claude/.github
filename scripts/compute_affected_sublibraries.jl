@@ -47,16 +47,17 @@
 # Transitively affected packages (reverse deps) only run on version "1".
 #
 # Usage:
-#   git diff --name-only origin/master...HEAD | julia compute_affected_sublibraries.jl /path/to/repo
+#   git diff --name-only origin/master...HEAD | \
+#     julia compute_affected_sublibraries.jl /path/to/repo --projects-matrix
 #
-# Output: JSON array of {group, version, runner, timeout, num_threads} objects
-#   for GitHub Actions matrix include.
+# --projects-matrix: JSON array of {project, group, version, runner, timeout,
+#   num_threads} objects for the project-model sublibrary CI
+#   (sublibrary-project-tests.yml), which tests each via `tests.yml`
+#   project=lib/<pkg> with the group passed through the group env var. Honors
+#   each sublibrary's test/test_groups.toml.
 #
-# With the --projects flag the output is instead a JSON array of the affected
-# "lib/<pkg>" paths (the union of directly-changed and transitively-affected
-# sublibraries), for the project-model sublibrary CI which tests each via
-# `tests.yml` project=lib/<pkg> rather than GROUP dispatch. test_groups.toml
-# (versions/runner/timeout/threads/local_only) does not apply in that mode.
+# --projects: JSON array of the affected "lib/<pkg>" paths only (the union of
+#   directly-changed and transitively-affected sublibraries).
 
 using TOML
 
@@ -201,36 +202,6 @@ const EXCLUDES = Set(
 
 const DOWNSTREAM_VERSION = "1"
 
-function build_matrix(
-        direct::Set{String}, transitive::Set{String}, lib_dir::String
-    )
-    entries = []
-    for pkg in sort!(collect(union(direct, transitive)))
-        groups = load_test_groups(lib_dir, pkg)
-        is_downstream = pkg in transitive
-        for group_name in sort!(collect(keys(groups)))
-            config = groups[group_name]
-            # local_only groups don't run when this package was only pulled
-            # in via the reverse-dependency graph.
-            is_downstream && config.local_only && continue
-            ci_group = group_name == "Core" ? pkg : "$(pkg)_$(group_name)"
-            # Downstream (transitive) deps only run on latest stable.
-            versions = is_downstream ? [DOWNSTREAM_VERSION] : config.versions
-            for ver in versions
-                (ci_group, ver) in EXCLUDES && continue
-                push!(
-                    entries,
-                    (;
-                        group = ci_group, version = ver, runner = config.runner,
-                        timeout = config.timeout, num_threads = config.num_threads,
-                    )
-                )
-            end
-        end
-    end
-    return entries
-end
-
 # Minimal JSON serialization (no external dependency needed)
 function json_value(v::String)
     return print("\"", v, "\"")
@@ -256,12 +227,12 @@ function print_projects(direct::Set{String}, transitive::Set{String})
     return println("]")
 end
 
-# Like build_matrix, but for the project model: one entry per affected
-# sublibrary × test group × version, carrying the lib/<pkg> project path and
-# the bare group name (passed to the sublibrary's runtests via the group env
-# var, e.g. ODEDIFFEQ_TEST_GROUP) rather than the GROUP-dispatch "pkg_group"
-# string. Same test_groups.toml semantics (versions/runner/timeout/threads/
-# local_only), downstream-only-on-v1 rule, and EXCLUDES as build_matrix.
+# Build the project-model matrix: one entry per affected sublibrary × test
+# group × version, carrying the lib/<pkg> project path and the bare group name
+# (passed to the sublibrary's runtests via the group env var, e.g.
+# ODEDIFFEQ_TEST_GROUP). Honors test_groups.toml (versions/runner/timeout/
+# threads/local_only), the downstream-only-on-v1 rule, and EXCLUDES (keyed on
+# the "pkg" / "pkg_group" CI group string).
 function build_projects_matrix(
         direct::Set{String}, transitive::Set{String}, lib_dir::String
     )
@@ -304,20 +275,9 @@ function print_projects_matrix(entries)
     return println("]")
 end
 
-function print_json(entries)
-    print("[")
-    for (i, entry) in enumerate(entries)
-        i > 1 && print(",")
-        print("{\"group\":\"", entry.group, "\",\"version\":\"", entry.version, "\",\"runner\":")
-        json_value(entry.runner)
-        print(",\"timeout\":", entry.timeout, ",\"num_threads\":", entry.num_threads, "}")
-    end
-    return println("]")
-end
-
 function main()
     if length(ARGS) < 1
-        println(stderr, "Usage: julia $(PROGRAM_FILE) <repo_root>")
+        println(stderr, "Usage: julia $(PROGRAM_FILE) <repo_root> (--projects-matrix | --projects)")
         exit(1)
     end
 
@@ -343,8 +303,8 @@ function main()
         return print_projects(direct, transitive)
     end
 
-    matrix = build_matrix(direct, transitive, lib_dir)
-    return print_json(matrix)
+    println(stderr, "Error: pass --projects-matrix or --projects")
+    exit(1)
 end
 
 # Only run when executed as a script; `include`-ing the file (e.g. from the
