@@ -153,6 +153,8 @@ tested via `project: lib/X` without a hand-written develop step.
 | `check-bounds` | string | `"yes"` | `julia-runtest` `check_bounds` (`yes`/`no`/`auto`). |
 | `allow-reresolve` | boolean | `true` | `julia-runtest` `allow_reresolve`. |
 | `julia-runtest-depwarn` | string | `"yes"` | `--depwarn` flag value. |
+| `apt-packages` | string | `""` | Space-separated apt packages to install before build/test (Linux runners) — for packages with system deps (R / Python / FEniCS wrappers). |
+| `force-latest-compatible-version` | boolean | `false` | `julia-runtest` `force_latest_compatible_version`. |
 | `continue-on-error` | boolean | — | Don't fail the run if the job fails (also auto-true on `nightly`). |
 
 ```yaml
