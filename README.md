@@ -269,6 +269,8 @@ SciML standard formatter. Fails if any tracked file isn't Runic-formatted.
 |---|---|---|---|
 | `julia-version` | string | `"1"` | Julia version. |
 | `runic-version` | string | `"1"` | Runic version. |
+| `extensions` | string | `"jl"` | Comma-separated file extensions to check, e.g. `jl,md` (Runic ≥ 1.7). |
+| `docstrings` | boolean | `false` | Also format Julia code blocks in docstrings (Runic ≥ 1.7). |
 | `exclude` | string | `""` | Space-separated paths to drop from the git index before the check (e.g. vendored/legacy files Runic can't parse). The working tree and history are untouched. |
 
 ```yaml
@@ -282,6 +284,25 @@ jobs:
 > and **Catalyst.jl** are exempt from Runic at the maintainer's (Sam Isaacson)
 > request — they stay on their own JuliaFormatter (`Format`) setup. Don't add
 > `runic.yml` to these repos or reformat them with Runic.
+
+### `runic-suggestions-on-pr.yml`
+
+Posts Runic formatting fixes as **PR review suggestions** (the Runic
+counterpart of `format-suggestions-on-pr.yml`): `runic-action` with
+`format_files: true` rewrites the tree and `reviewdog/action-suggester` turns
+the diff into inline suggestions. Apply them individually, or **"Add suggestion
+to batch" → "Commit suggestions"** to land them all as a **single commit**.
+Inputs: `julia-version`, `runic-version`, `extensions`, `docstrings`.
+
+```yaml
+# .github/workflows/RunicSuggestions.yml
+name: Runic Suggestions
+on: pull_request
+jobs:
+  suggest:
+    uses: "SciML/.github/.github/workflows/runic-suggestions-on-pr.yml@v1"
+    secrets: "inherit"
+```
 
 ### `format-check.yml` / `format-suggestions-on-pr.yml`
 
