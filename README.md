@@ -446,6 +446,11 @@ reference for setting up a new monorepo. The reference implementation is
 [SciML/OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl). The
 remainder of this section is the CI-mechanics summary.
 
+**Minimum supported Julia for SciML packages is the LTS (currently 1.10):** the
+`[compat] julia` floor is the literal LTS version number, while CI matrices and
+downgrade use the `lts` alias so the floor tracks the LTS as it advances (see
+[Monorepo.md](Monorepo.md#minimum-supported-julia)).
+
 ### How sublibrary tests run
 
 `sublibrary-project-tests.yml` computes the **affected** sublibraries (see

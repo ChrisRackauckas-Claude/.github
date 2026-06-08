@@ -484,6 +484,15 @@ If a sublibrary has **no `test_groups.toml`**, the CI applies the default
 > the single latest-stable version `"1"` regardless of their declared
 > `versions`, by the change-detection script.
 
+### Minimum supported Julia
+
+Minimum supported Julia for SciML packages is the LTS (currently 1.10).
+Concretely: the `[compat] julia` floor is the LTS version number (`1.10` today —
+Julia compat requires a numeric version, not an alias); the CI version matrix
+includes `lts`; and downgrade runs on `julia-version: "lts"`. The `lts` alias is
+used everywhere Julia tooling accepts it so the floor tracks the LTS as it
+advances; only the `[compat] julia` entry stays a literal version.
+
 ### GPU is a dep-adding group on a custom runner — there is no GPU workflow
 
 GPU testing is **not** a separate workflow. It is just a group:
