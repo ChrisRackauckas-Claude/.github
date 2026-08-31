@@ -8,6 +8,70 @@ include(SCRIPT)
 const DEVELOP_SCRIPT = joinpath(@__DIR__, "..", "scripts", "develop_sources.jl")
 include(DEVELOP_SCRIPT)
 
+const RESTORE_DOWNGRADE_SCRIPT =
+    joinpath(@__DIR__, "..", "scripts", "restore_downgraded_project.jl")
+include(RESTORE_DOWNGRADE_SCRIPT)
+
+@testset "restore downgraded project manifest metadata" begin
+    root = mktempdir()
+    write(
+        joinpath(root, "Project.toml"), """
+        name = "Root"
+        uuid = "00000000-0000-0000-0000-000000000001"
+        version = "1.2.3"
+
+        [deps]
+        Runtime = "00000000-0000-0000-0000-000000000002"
+
+        [weakdeps]
+        Weak = "00000000-0000-0000-0000-000000000003"
+
+        [extensions]
+        RootWeakExt = "Weak"
+        """,
+    )
+    write(
+        joinpath(root, "Manifest.toml"), """
+        julia_version = "1.10.0"
+        manifest_format = "2.0"
+        project_hash = "stale"
+
+        [[deps.Root]]
+        deps = ["Runtime", "TestOnly"]
+        path = "."
+        uuid = "00000000-0000-0000-0000-000000000001"
+        version = "1.2.3"
+
+        [[deps.Runtime]]
+        git-tree-sha1 = "runtime-tree"
+        uuid = "00000000-0000-0000-0000-000000000002"
+        version = "2.0.0"
+
+        [[deps.TestOnly]]
+        git-tree-sha1 = "test-tree"
+        uuid = "00000000-0000-0000-0000-000000000004"
+        version = "3.0.0"
+        """,
+    )
+
+    before = TOML.parsefile(joinpath(root, "Manifest.toml"))
+    restore_downgraded_project(root)
+    after = TOML.parsefile(joinpath(root, "Manifest.toml"))
+
+    @test !haskey(after, "project_hash")
+    @test after["deps"]["Runtime"] == before["deps"]["Runtime"]
+    @test after["deps"]["TestOnly"] == before["deps"]["TestOnly"]
+    root_entry = only(after["deps"]["Root"])
+    @test root_entry["path"] == "."
+    @test root_entry["uuid"] == "00000000-0000-0000-0000-000000000001"
+    @test root_entry["version"] == "1.2.3"
+    @test root_entry["deps"] == ["Runtime"]
+    @test root_entry["weakdeps"] == Dict(
+        "Weak" => "00000000-0000-0000-0000-000000000003",
+    )
+    @test root_entry["extensions"] == Dict("RootWeakExt" => "Weak")
+end
+
 # Build a fixture monorepo `lib/` tree in a temp dir.
 #   A  (base, no internal deps)
 #   B  deps A

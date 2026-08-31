@@ -167,6 +167,13 @@ jobs:
           [ -n "${{ inputs.skip }}" ] && effective="$effective,${{ inputs.skip }}"
           echo "Effective downgrade skip: $effective"
           echo "EFFECTIVE_SKIP=$effective" >> "$GITHUB_ENV"
+      - name: "Save project metadata for QA"
+        if: "${{ inputs.group-env-value == 'QA' }}"
+        shell: bash
+        run: |
+          save_dir="$RUNNER_TEMP/sciml-downgrade-original-project"
+          mkdir -p "$save_dir"
+          cp "${{ matrix.project }}/Project.toml" "$save_dir/Project.toml"
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
           projects: ${{ matrix.project }}
@@ -180,6 +187,19 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           project: ${{ matrix.project }}
+      - name: "Checkout SciML/.github for the downgrade metadata helper"
+        if: "${{ inputs.group-env-value == 'QA' }}"
+        uses: actions/checkout@v7
+        with:
+          repository: SciML/.github
+          path: .sciml-dotgithub
+      - name: "Restore project metadata before QA"
+        if: "${{ inputs.group-env-value == 'QA' }}"
+        shell: bash
+        run: |
+          save_dir="$RUNNER_TEMP/sciml-downgrade-original-project"
+          cp "$save_dir/Project.toml" "${{ matrix.project }}/Project.toml"
+          julia --startup-file=no .sciml-dotgithub/scripts/restore_downgraded_project.jl "${{ matrix.project }}"
       - uses: julia-actions/julia-runtest@v1
         with:
           project: ${{ matrix.project }}
